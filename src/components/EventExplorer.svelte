@@ -1,23 +1,27 @@
 <!-- EventExplorer.svelte -->
 
 <script>
-  import TextField from "@smui/textfield";  import Button from "@smui/button";
+  import TextField from "@smui/textfield";
+  import Button from "@smui/button";
   import DataTable, {
     Head,
     Body,
     Row,
     Cell,
     Pagination,
-  } from '@smui/data-table';
-  import Select, { Option } from '@smui/select';
-  import IconButton from '@smui/icon-button';
-  import { Label } from '@smui/common';
+  } from "@smui/data-table";
+  import Select, { Option } from "@smui/select";
+  import IconButton from "@smui/icon-button";
+  import { Label } from "@smui/common";
   export let eventBus;
   export let aggregate;
   export let tenant;
-  import LayoutGrid, { Cell as LCell } from '@smui/layout-grid';
+  export let eventTypes;
+
+  import LayoutGrid, { Cell as LCell } from "@smui/layout-grid";
+  import Chip, { Set, Text } from "@smui/chips";
   let rows = [];
-  let eventNames = "";
+  let selected = [];
   let dateFrom = "";
   let dateTo = "";
   let aggregateIds = "";
@@ -25,20 +29,18 @@
   let batchSize = 1000;
   let rowsPerPage = 10;
   let currentPage = 0;
-  let eventTypes = [];
-  let value = eventTypes[0];
 
   $: start = currentPage * rowsPerPage;
   $: end = Math.min(start + rowsPerPage, rows.length);
   $: slice = rows.slice(start, end);
   $: lastPage = Math.max(Math.ceil(rows.length / rowsPerPage) - 1, 0);
- 
+
   $: if (currentPage > lastPage) {
     currentPage = lastPage;
   }
 
   function changePage() {
-    fetchEvents(aggregateIds, eventNames, dateFrom, dateTo, tags,batchSize);
+    fetchEvents(aggregateIds, selected, dateFrom, dateTo, tags, batchSize);
   }
   function addRow(data) {
     rows = [...rows, data];
@@ -46,7 +48,7 @@
   // Function for handling page change
   function fetchEvents(
     aggregateIds,
-    eventNames,
+    selectedEvents,
     eventDateFrom,
     eventDateTo,
     tags,
@@ -55,11 +57,11 @@
     eventBus.send(
       "/" + aggregate + "/event",
       {
-        aggregateIds: aggregateIds? aggregateIds.split(',') : [],
-        events: eventNames ? eventNames.split(',') : [],
+        aggregateIds: aggregateIds ? aggregateIds.split(",") : [],
+        events: selectedEvents,
         from: eventDateFrom ? eventDateFrom : null,
         to: eventDateTo ? eventDateTo : null,
-        tags: tags ? tags.split(',') : [],
+        tags: tags ? tags.split(",") : [],
         tenantId: tenant,
         batchSize: batchSize,
       },
@@ -78,95 +80,90 @@
   }
 </script>
 
-<div>
+<div class="margins">
   <div class="margins">
     <LayoutGrid>
       <LCell>
         <div class="demo-cell">
           <TextField
-          label="Aggregate IDs:"
-          helperText="Aggregate IDs (comma separated)"
-          bind:value={aggregateIds}
-          id="aggregateIds"
-        > </TextField>
-          </div>
-      </LCell> 
-        <LCell>
-          <div class="demo-cell">
-            <Select bind:value label="Select Menu">
-            </Select>
-            <TextField
-      label="Event Names:"
-      helperText="Event names (comma separated)"
-      bind:value={eventNames}
-      id="event-name"
-    > </TextField>
-          </div>
-        </LCell>
+            label="Aggregate IDs:"
+            helperText="Aggregate IDs (comma separated)"
+            bind:value={aggregateIds}
+            id="aggregateIds"
+          />
+        </div>
+      </LCell>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+            label="Event Tags:"
+            helperText="Event Tags (comma separated)"
+            bind:value={tags}
+            id="tags"
+          />
+        </div>
+      </LCell>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+            label="Date From:"
+            type="date"
+            bind:value={dateFrom}
+            id="event-date-from"
+          />
+        </div>
+      </LCell>
 
-    <LCell>
-      <div class="demo-cell">
-        <TextField
-        label="Event Tags:"
-        helperText="Event Tags (comma separated)"
-        bind:value={tags}
-        id="tags"
-      >
-    </TextField>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+            label="Date To:"
+            type="date"
+            bind:value={dateTo}
+            id="event-date-to"
+          />
         </div>
-    </LCell> 
-    <LCell>
-      <div class="demo-cell">
-        <TextField
-      label="Date From:"
-      type="date"
-      bind:value={dateFrom}
-      id="event-date-from"
-    >
-    </TextField>
+      </LCell>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+            label="Page Size:"
+            helperText="Default 100"
+            bind:value={batchSize}
+            id="tags"
+          />
         </div>
-    </LCell>
-    
-    <LCell>
-      <div class="demo-cell">
-        <TextField
-      label="Date To:"
-      type="date"
-      bind:value={dateTo}
-      id="event-date-to"
-    >
-    </TextField>
+      </LCell>
+      <LCell>
+        <div class="demo-clee">
+          <Button
+            variant="unelevated"
+            color="primary"
+            raised
+            on:click={changePage}>Submit</Button
+          >
         </div>
-    </LCell> 
-    <LCell>
-      <div class="demo-cell">
-        <TextField
-        label="Page Size:"
-        helperText="Default 100"
-        bind:value={batchSize}
-        id="tags"
-      >
-      </TextField>
-        </div>
-    </LCell> 
-   <LCell> 
-    <div class="demo-clee">
-      <Button  				variant="unelevated"
-      color="primary" raised on:click={changePage}>Submit</Button>
-    </div>
-   </LCell>
-  </LayoutGrid>
+      </LCell>
+    </LayoutGrid>
+    <div class="margins">
+      <Set chips={eventTypes} let:chip filter bind:selected>
+        <Chip {chip} touch>
+          <Text>{chip}</Text>
+        </Chip>
+      </Set>
+      <pre class="status">Selected: {selected.length === 0  ? "": selected.join(", ")}</pre>
+    </div> 
   </div>
   <div class="margins">
     <DataTable>
       <Row>
-        <Cell head>Journal Offset</Cell>
+        <Cell head>Offset</Cell>
         <Cell head>Aggregate ID</Cell>
-        <Cell head>Event Class</Cell>
         <Cell head>Event Version</Cell>
-        <Cell head>Event</Cell>
+        <Cell head>Event Type</Cell>
+        <Cell head>Payload</Cell>
         <Cell head>Tenant ID</Cell>
-        <Cell head>Command ID</Cell>
+        <Cell head>Command</Cell>
         <Cell head>Tags</Cell>
         <Cell head>Schema Version</Cell>
       </Row>
@@ -175,8 +172,8 @@
           <Cell>{row.journalOffset}</Cell>
           <Cell>{row.aggregateId}</Cell>
           <Cell>{row.eventVersion}</Cell>
-          <Cell>{JSON.stringify(row.event)}</Cell>
           <Cell>{row.eventClass}</Cell>
+          <Cell>{JSON.stringify(row.event)}</Cell>
           <Cell>{row.tenantId}</Cell>
           <Cell>{row.commandId}</Cell>
           <Cell>{row.tags}</Cell>
@@ -195,7 +192,7 @@
         <svelte:fragment slot="total">
           {start + 1}-{end} of {rows.length}
         </svelte:fragment>
-     
+
         <IconButton
           class="material-icons"
           action="first-page"
@@ -227,5 +224,4 @@
       </Pagination>
     </DataTable>
   </div>
-  
 </div>

@@ -8,7 +8,6 @@
   import HelperText from "@smui/textfield/helper-text";
   import Textfield from "@smui/textfield";
   import Paper, { Title, Subtitle, Content } from "@smui/paper";
-  import { JSONSchemaFaker } from "json-schema-faker";
   import Select, { Option } from "@smui/select";
   let aggregateId = "";
   let aggregateState = "";
@@ -18,8 +17,7 @@
   let value = cmdTypes[0];
   let currentVersion = 0;
   $: {
-    let schema = cmdSchemas[value];
-    commandJson = JSON.stringify(JSONSchemaFaker.resolve(schema), null, 2);
+    commandJson = cmdSchemas[value];
   }
 
   // Function for handling subscription

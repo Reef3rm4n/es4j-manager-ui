@@ -14,6 +14,7 @@
 	import TabBar from "@smui/tab-bar";
 	import Button from "@smui/button";
 	import Paper, { Content } from "@smui/paper";
+	import { JSONSchemaFaker } from "json-schema-faker";
 	let active = "Connect";
 	let es4jConnectionString = "http://localhost:8080";
 	let eventBus;
@@ -28,7 +29,7 @@
 	let open = true;
 	let response = "Nothing yet.";
 
-	function connectToEventbus(connectionString) {
+	async function connectToEventbus(connectionString) {
 		eventBus = new EventBus(connectionString + "/eventbus");
 		eventBus.enableReconnect(true);
 		eventBus.onerror = function (error) {
@@ -51,14 +52,25 @@
 							2000
 						);
 					}
-					console.log(JSON.stringify(message.body.commandSchemas, null, 2));
+					
 					eventTypes = message.body.events;
 					cmdSchemas = message.body.commandSchemas;
+					replaceSchemas(cmdSchemas);
 					active = "Aggregate Manager";
 					open = false;
 				}
 			);
 		};
+	}
+
+	function replaceSchemas(obj) {
+		for (let key in obj) {
+			obj[key] = JSON.stringify(
+				JSONSchemaFaker.generate(obj[key]),
+				null,
+				2
+			);
+		}
 	}
 </script>
 
@@ -139,13 +151,23 @@
 	{#if active === "Aggregate Manager"}
 		<Paper variant="unelevated">
 			<Content>
-				<AggregateManager bind:eventBus bind:aggregate bind:tenant bind:cmdSchemas={cmdSchemas} />
+				<AggregateManager
+					bind:eventBus
+					bind:aggregate
+					bind:tenant
+					bind:cmdSchemas
+				/>
 			</Content>
 		</Paper>
 	{:else if active === "Event Explorer"}
 		<Paper variant="unelevated">
 			<Content>
-				<EventExplorer bind:eventBus bind:aggregate bind:tenant />
+				<EventExplorer
+					bind:eventBus
+					bind:aggregate
+					bind:tenant
+					bind:eventTypes
+				/>
 			</Content>
 		</Paper>
 		<!-- {:else if active === "Projection Manager"}
