@@ -1,119 +1,231 @@
 <!-- EventExplorer.svelte -->
 
 <script>
-  // You can define your component's logic here
+  import TextField from "@smui/textfield";  import Button from "@smui/button";
+  import DataTable, {
+    Head,
+    Body,
+    Row,
+    Cell,
+    Pagination,
+  } from '@smui/data-table';
+  import Select, { Option } from '@smui/select';
+  import IconButton from '@smui/icon-button';
+  import { Label } from '@smui/common';
+  export let eventBus;
+  export let aggregate;
+  export let tenant;
+  import LayoutGrid, { Cell as LCell } from '@smui/layout-grid';
+  let rows = [];
+  let eventNames = "";
+  let dateFrom = "";
+  let dateTo = "";
+  let aggregateIds = "";
+  let tags = "";
+  let batchSize = 1000;
+  let rowsPerPage = 10;
+  let currentPage = 0;
+  let eventTypes = [];
+  let value = eventTypes[0];
 
+  $: start = currentPage * rowsPerPage;
+  $: end = Math.min(start + rowsPerPage, rows.length);
+  $: slice = rows.slice(start, end);
+  $: lastPage = Math.max(Math.ceil(rows.length / rowsPerPage) - 1, 0);
+ 
+  $: if (currentPage > lastPage) {
+    currentPage = lastPage;
+  }
+
+  function changePage() {
+    fetchEvents(aggregateIds, eventNames, dateFrom, dateTo, tags,batchSize);
+  }
+  function addRow(data) {
+    rows = [...rows, data];
+  }
   // Function for handling page change
-  function changePage(direction) {
-    // Logic for changing the page
+  function fetchEvents(
+    aggregateIds,
+    eventNames,
+    eventDateFrom,
+    eventDateTo,
+    tags,
+    batchSize
+  ) {
+    eventBus.send(
+      "/" + aggregate + "/event",
+      {
+        aggregateIds: aggregateIds? aggregateIds.split(',') : [],
+        events: eventNames ? eventNames.split(',') : [],
+        from: eventDateFrom ? eventDateFrom : null,
+        to: eventDateTo ? eventDateTo : null,
+        tags: tags ? tags.split(',') : [],
+        tenantId: tenant,
+        batchSize: batchSize,
+      },
+      null,
+      function (error, message) {
+        if (error) {
+          notifier.danger("fetch error :" + error, 3000);
+        } else {
+          rows = [];
+          message.body.forEach((event) => {
+            addRow(event);
+          });
+        }
+      }
+    );
   }
 </script>
 
-<div class="page">
-  <h3>Event Explorer</h3>
-  <div class="event-form">
-    <label for="event-name">Event Names:</label>
-    <input
-      type="text"
+<div>
+  <div class="margins">
+    <LayoutGrid>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+          label="Aggregate IDs:"
+          helperText="Aggregate IDs (comma separated)"
+          bind:value={aggregateIds}
+          id="aggregateIds"
+        > </TextField>
+          </div>
+      </LCell> 
+        <LCell>
+          <div class="demo-cell">
+            <Select bind:value label="Select Menu">
+            </Select>
+            <TextField
+      label="Event Names:"
+      helperText="Event names (comma separated)"
+      bind:value={eventNames}
       id="event-name"
-      name="event-name"
-      placeholder="Event names (comma separated)"
-    />
+    > </TextField>
+          </div>
+        </LCell>
 
-    <label for="event-date-from">Date From:</label>
-    <input type="date" id="event-date-from" name="event-date-from" />
-    <label for="event-date-to">Date To:</label>
-    <input type="date" id="event-date-to" name="event-date-to" />
-    <label for="aggregateIds">Aggregate IDs:</label>
-    <input
-      type="text"
-      id="aggregateIds"
-      placeholder="Aggregate IDs (comma separated)"
-    />
-    <label for="tags">Event Tags:</label><input
-      type="text"
-      id="tags"
-      placeholder="Event Tags (comma separated)"
-    />
-    <label for="tenantId">Tenant :</label><input
-      type="text"
-      id="tenantId"
-      placeholder="Tenant (optional)"
-    />
-    <!-- ... Other Form Fields ... -->
-
-    <button type="submit">Submit</button>
-  </div>
-
-  <table id="eventGrid" class="event-grid">
-    <tr>
-      <th>Journal Offset</th>
-      <th>Aggregate ID</th>
-      <th>Event Class</th>
-      <th>Event Version</th>
-      <th>Event</th>
-      <th>Tenant ID</th>
-      <th>Command ID</th>
-      <th>Tags</th>
-      <th>Schema Version</th>
-    </tr>
-  </table>
-  <div id="pagination">
-    <button on:click={() => changePage(-1)} id="prevBtn" disabled
-      >Previous</button
+    <LCell>
+      <div class="demo-cell">
+        <TextField
+        label="Event Tags:"
+        helperText="Event Tags (comma separated)"
+        bind:value={tags}
+        id="tags"
+      >
+    </TextField>
+        </div>
+    </LCell> 
+    <LCell>
+      <div class="demo-cell">
+        <TextField
+      label="Date From:"
+      type="date"
+      bind:value={dateFrom}
+      id="event-date-from"
     >
-    <button on:click={() => changePage(1)} id="nextBtn" disabled>Next</button>
+    </TextField>
+        </div>
+    </LCell>
+    
+    <LCell>
+      <div class="demo-cell">
+        <TextField
+      label="Date To:"
+      type="date"
+      bind:value={dateTo}
+      id="event-date-to"
+    >
+    </TextField>
+        </div>
+    </LCell> 
+    <LCell>
+      <div class="demo-cell">
+        <TextField
+        label="Page Size:"
+        helperText="Default 100"
+        bind:value={batchSize}
+        id="tags"
+      >
+      </TextField>
+        </div>
+    </LCell> 
+   <LCell> 
+    <div class="demo-clee">
+      <Button  				variant="unelevated"
+      color="primary" raised on:click={changePage}>Submit</Button>
+    </div>
+   </LCell>
+  </LayoutGrid>
   </div>
-
-  <div id="errorMessage" class="error" />
+  <div class="margins">
+    <DataTable>
+      <Row>
+        <Cell head>Journal Offset</Cell>
+        <Cell head>Aggregate ID</Cell>
+        <Cell head>Event Class</Cell>
+        <Cell head>Event Version</Cell>
+        <Cell head>Event</Cell>
+        <Cell head>Tenant ID</Cell>
+        <Cell head>Command ID</Cell>
+        <Cell head>Tags</Cell>
+        <Cell head>Schema Version</Cell>
+      </Row>
+      {#each slice as row}
+        <Row>
+          <Cell>{row.journalOffset}</Cell>
+          <Cell>{row.aggregateId}</Cell>
+          <Cell>{row.eventVersion}</Cell>
+          <Cell>{JSON.stringify(row.event)}</Cell>
+          <Cell>{row.eventClass}</Cell>
+          <Cell>{row.tenantId}</Cell>
+          <Cell>{row.commandId}</Cell>
+          <Cell>{row.tags}</Cell>
+          <Cell>{row.schemaVersion}</Cell>
+        </Row>
+      {/each}
+      <Pagination slot="paginate">
+        <svelte:fragment slot="rowsPerPage">
+          <Label>Rows Per Page</Label>
+          <Select variant="outlined" bind:value={rowsPerPage} noLabel>
+            <Option value={10}>10</Option>
+            <Option value={25}>25</Option>
+            <Option value={100}>100</Option>
+          </Select>
+        </svelte:fragment>
+        <svelte:fragment slot="total">
+          {start + 1}-{end} of {rows.length}
+        </svelte:fragment>
+     
+        <IconButton
+          class="material-icons"
+          action="first-page"
+          title="First page"
+          on:click={() => (currentPage = 0)}
+          disabled={currentPage === 0}>first_page</IconButton
+        >
+        <IconButton
+          class="material-icons"
+          action="prev-page"
+          title="Prev page"
+          on:click={() => currentPage--}
+          disabled={currentPage === 0}>chevron_left</IconButton
+        >
+        <IconButton
+          class="material-icons"
+          action="next-page"
+          title="Next page"
+          on:click={() => currentPage++}
+          disabled={currentPage === lastPage}>chevron_right</IconButton
+        >
+        <IconButton
+          class="material-icons"
+          action="last-page"
+          title="Last page"
+          on:click={() => (currentPage = lastPage)}
+          disabled={currentPage === lastPage}>last_page</IconButton
+        >
+      </Pagination>
+    </DataTable>
+  </div>
+  
 </div>
-
-<style>
-   th {
-    padding: 15px;
-    text-align: left;
-  }
-
-  th {
-    background-color: #0a3d62;
-    color: white;
-  }
-
-  tr:nth-child(even) {
-    background-color: #f2f2f2;
-  }
-
-  tr:nth-child(odd) {
-    background-color: #dcdde1;
-  }
-
-  tr:hover {
-    background-color: #4a69bd;
-    cursor: pointer;
-  }
-
-  div {
-    background-color: #f2f2f2;
-    padding: 20px;
-    border-radius: 10px;
-    margin-top: 20px;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-  }
-
-  input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
-
-  button {
-    width: 100%;
-  }
-</style>

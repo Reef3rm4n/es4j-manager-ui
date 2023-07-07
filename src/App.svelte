@@ -1,24 +1,32 @@
 <script>
 	import AggregateManager from "./components/AggregateManager.svelte";
-	import ProjectionManager from "./components/ProjectionManager.svelte";
+	// import ProjectionManager from "./components/ProjectionManager.svelte";
 	import EventExplorer from "./components/EventExplorer.svelte";
 	import EventBus from "./lib/vertx-eventbus.js";
-	import { slide } from "svelte/transition";
+	import Textfield from "@smui/textfield";
+	import Icon from "@smui/textfield/icon";
+	import HelperText from "@smui/textfield/helper-text";
 	import {
 		NotificationDisplay,
 		notifier,
 	} from "@beyonk/svelte-notifications";
-
-	let currentPage = "home";
+	import Tab, { Label } from "@smui/tab";
+	import TabBar from "@smui/tab-bar";
+	import Button from "@smui/button";
+	import Paper, { Content } from "@smui/paper";
+	let active = "Connect";
 	let es4jConnectionString = "http://localhost:8080";
 	let eventBus;
-	let isConnected = false;
 	let n;
-	let aggregate;
+	let aggregate = "";
 	let tenant = "default";
-	function navigateTo(pageId) {
-		currentPage = pageId;
-	}
+	let cmdSchemas = {};
+	let eventTypes = [];
+
+	import Dialog, { Title, Actions } from "@smui/dialog";
+
+	let open = true;
+	let response = "Nothing yet.";
 
 	function connectToEventbus(connectionString) {
 		eventBus = new EventBus(connectionString + "/eventbus");
@@ -28,228 +36,135 @@
 		};
 		eventBus.onclose = function () {
 			notifier.danger("EventBus Closed", 1000);
-			isConnected = false;
-			navigateTo("home");
+			open = true;
 		};
 		eventBus.onopen = function () {
-			isConnected = true; // <-- Set isConnected to true
 			notifier.info("Eventbus Connected", 1000);
-			navigateTo("aggregate-manager");
+			eventBus.send(
+				"/" + aggregate + "/" + "available-types",
+				"",
+				null,
+				function (error, message) {
+					if (error) {
+						notifier.danger(
+							"unable to fetch types for aggregate :" + error,
+							2000
+						);
+					}
+					console.log(JSON.stringify(message.body.commandSchemas, null, 2));
+					eventTypes = message.body.events;
+					cmdSchemas = message.body.commandSchemas;
+					active = "Aggregate Manager";
+					open = false;
+				}
+			);
 		};
 	}
 </script>
 
 <NotificationDisplay bind:this={n} />
-
-<div class="container">
-	{#if isConnected}
-		<div
-			class="sidebar"
-			class:hide={currentPage === "home"}
-			in:slide={{ duration: 300 }}
-			out:slide={{ duration: 300 }}
-		>
-			<ul>
-				<li>
-					<button
-						class:selected={currentPage === "aggregate-manager"}
-						on:click={() => navigateTo("aggregate-manager")}
+<div class="custom-dialog">
+	<Dialog
+		bind:open
+		scrimClickAction=""
+		escapeKeyAction=""
+		aria-labelledby="mandatory-title"
+		aria-describedby="mandatory-content"
+	>
+		<Title id="mandatory-title">Es4j Manager</Title>
+		<div class="dialog-content-wrapper">
+			<Content id="mandatory-content">
+				<div class="textfield-container">
+					<Textfield
+						bind:value={es4jConnectionString}
+						label="Es4j connection"
 					>
-						Aggregate Manager
-					</button>
-				</li>
-				<li>
-					<button
-						class:selected={currentPage === "projection-manager"}
-						on:click={() => navigateTo("projection-manager")}
-					>
-						Projection Manager
-					</button>
-				</li>
-				<li>
-					<button
-						class:selected={currentPage === "event-explorer"}
-						on:click={() => navigateTo("event-explorer")}
-					>
-						Event Explorer
-					</button>
-				</li>
-			</ul>
-		</div>
-	{/if}
-	<div class="content">
-		{#if currentPage === "home"}
-			<div class="home">
-				<label for="es4j-connection-string">es4j connection:</label>
-				<input
-					type="text"
-					id="es4j-connection-string"
-					bind:value={es4jConnectionString}
-					placeholder="http://localhost:8080"
-				/>
-				<input
-					type="text"
-					id="aggregate"
-					bind:value={aggregate}
-					placeholder="account-portfolio"
-				/>
-				<input
-					type="text"
-					id="tenant"
-					bind:value={tenant}
-					placeholder="default"
-				/>
-				<button on:click={() => connectToEventbus(es4jConnectionString)}
-					>Submit</button
+						<HelperText slot="helper">
+							<p>
+								Es4j connection string, default is
+								http://localhost:8080
+							</p>
+						</HelperText>
+					</Textfield>
+				</div>
+				<div class="textfield-container">
+					<Textfield bind:value={tenant} label="Tenant">
+						<HelperText slot="helper">
+							<p>
+								Your tenant name, if you don't have one, use
+								default
+							</p>
+						</HelperText>
+					</Textfield>
+				</div>
+				<div class="textfield-container">
+					<Textfield bind:value={aggregate} label="Aggregate">
+						<HelperText slot="helper">
+							<p>
+								Your aggregate class kebab cased like
+								AccountPortfolio translates to account-portfolio
+							</p>
+						</HelperText>
+					</Textfield>
+				</div>
+				<Button
+					variant="unelevated"
+					color="primary"
+					raised
+					on:click={() => connectToEventbus(es4jConnectionString)}
 				>
-			</div>
-		{/if}
-		{#if currentPage === "aggregate-manager"}
-			<AggregateManager bind:eventBus bind:aggregate bind:tenant />
-		{/if}
-		{#if currentPage === "projection-manager"}
-			<ProjectionManager bind:eventBus bind:aggregate bind:tenant />
-		{/if}
-		{#if currentPage === "event-explorer"}
-			<EventExplorer bind:eventBus bind:aggregate bind:tenant />
-		{/if}
-	</div>
+					Connect
+				</Button>
+			</Content>
+		</div>
+	</Dialog>
+</div>
+
+<div>
+	<TabBar
+		tabs={[
+			"Aggregate Manager",
+			"Event Explorer",
+			"Projection Manager",
+			"Business Rules",
+			"Cluster State",
+		]}
+		let:tab
+		bind:active
+	>
+		<Tab {tab}>
+			<Label>{tab}</Label>
+		</Tab>
+	</TabBar>
+	{#if active === "Aggregate Manager"}
+		<Paper variant="unelevated">
+			<Content>
+				<AggregateManager bind:eventBus bind:aggregate bind:tenant bind:cmdSchemas={cmdSchemas} />
+			</Content>
+		</Paper>
+	{:else if active === "Event Explorer"}
+		<Paper variant="unelevated">
+			<Content>
+				<EventExplorer bind:eventBus bind:aggregate bind:tenant />
+			</Content>
+		</Paper>
+		<!-- {:else if active === "Projection Manager"}
+		<Paper variant="unelevated">
+			<Content>
+				<ProjectionManager bind:eventBus bind:aggregate bind:tenant />
+			</Content>
+		</Paper> -->
+	{/if}
 </div>
 
 <style>
-	.container {
-		display: flex;
-		height: 100vh;
-		background-color: #f3f4f6;
-	}
-
-	/* Updated Sidebar Styles */
-.sidebar {
-    background-color: #1e3d58;
-    color: #ffffff;
-    padding: 20px;
-    display: inline-block;
-    height: 100vh;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    width: auto;
-    list-style: none;
-    overflow-y: auto;
-    border-radius: 15px 0px 0px 15px; /* Add rounded corners to the sidebar */
-    border-right: 1px solid rgba(255, 255, 255, 0.1); /* Optional - Adds a slight border on the right */
-}
-.sidebar ul {
-    list-style-type: none;
-    padding-left: 0;
-}
-
-.sidebar button {
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: 500;
-    padding: 10px 15px;
-    border: none;
-    background-color: transparent;
-    border-radius: 20px;
-    text-align: left;
-    transition: all 0.3s ease;
-    display: block;
-    width: 100%;
-    text-align: center;
-}
-
-.sidebar button:hover, .sidebar button.selected {
-    background-color: #3d5a80;
-    transform: scale(1.05);
-}
-
-/* Selected button state */
-.sidebar .selected {
-    background-color: #3d5a80;
-}
-
-
-	/* Content styles */
-	.content {
-		flex: 1;
-		padding: 20px;
-		overflow-y: auto;
-	}
-
-	/* Home page styles */
-	.home {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
+	.custom-dialog {
+		width: 60%; /* adjust the width of the dialog */
+		max-width: 600px; /* set max width */
+		border-radius: 50px; /* round the edges */
 		text-align: center;
-		height: 100vh;
-	}
-
-	.home label {
-		font-weight: bold;
-		margin-bottom: 10px;
-		color: #333;
-	}
-
-	.home input {
-		padding: 12px;
-		border-radius: 8px;
-		border: 1px solid #ccc;
-		margin-bottom: 16px;
-		width: 280px;
-	}
-
-	.home button {
-		padding: 12px 20px;
-		border-radius: 8px;
-		border: none;
-		background-color: #2c3e50; /* navy blue */
-		color: #fff;
-		font-size: 16px;
-		cursor: pointer;
-		transition: background-color 0.3s ease;
-	}
-
-	.home button:hover {
-		background-color: #34495e; /* dark navy blue */
-	}
-
-	/* Component styles */
-	.component {
-		background-color: #fff;
-		border-radius: 8px;
-		padding: 20px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-	}
-
-	.component h3 {
-		margin-top: 0;
-		color: #2c3e50; /* navy blue */
-	}
-
-	.component input,
-	.component select,
-	.component textarea {
-		width: 100%;
-		padding: 10px;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		margin-bottom: 10px;
-	}
-
-	.component button {
-		padding: 10px 20px;
-		background-color: #2c3e50; /* navy blue */
-		border: none;
-		color: #fff;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.3s ease;
-	}
-
-	.component button:hover {
-		background-color: #34495e; /* dark navy blue */
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 </style>

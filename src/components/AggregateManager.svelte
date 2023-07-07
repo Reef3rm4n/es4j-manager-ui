@@ -1,25 +1,27 @@
 <script>
-  // You can define your component's logic here
-  import { NotificationDisplay, notifier } from "@beyonk/svelte-notifications";
+  import { notifier } from "@beyonk/svelte-notifications";
+  import Button from "@smui/button";
   export let eventBus;
   export let aggregate;
   export let tenant;
-
-  let commandType;
-  let commandJson;
-  let aggregateId;
-  let aggregateState;
-
+  export let cmdSchemas;
+  import HelperText from "@smui/textfield/helper-text";
+  import Textfield from "@smui/textfield";
+  import Paper, { Title, Subtitle, Content } from "@smui/paper";
+  import { JSONSchemaFaker } from "json-schema-faker";
+  import Select, { Option } from "@smui/select";
+  let aggregateId = "";
+  let aggregateState = "";
+  let aggregateClass = "";
+  let cmdTypes = Object.keys(cmdSchemas);
+  let commandJson = "";
+  let value = cmdTypes[0];
+  let currentVersion = 0;
   $: {
-    // Reactive statement to watch for changes in textareaContent
-    if (aggregateState) {
-      const textarea = document.getElementById("aggregateStateArea");
-      if (textarea) {
-        textarea.style.height = "auto"; // Reset height
-        textarea.style.height = textarea.scrollHeight + "px"; // Set height to scrollHeight
-      }
-    }
+    let schema = cmdSchemas[value];
+    commandJson = JSON.stringify(JSONSchemaFaker.resolve(schema), null, 2);
   }
+
   // Function for handling subscription
   function handleSubscription() {
     eventBus.registerHandler(
@@ -30,6 +32,10 @@
           notifier.danger("Error in state stream:" + error, 2000);
         }
 
+        aggregateClass = message.body.aggregateClass;
+        currentVersion = message.body.currentVersion;
+        delete message.body.aggregateClass;
+        delete message.body.currentVersion;
         aggregateState = JSON.stringify(message.body, null, 2);
       }
     );
@@ -52,14 +58,9 @@
       tenant: tenant,
     });
   }
-
   // Function for handling command
   function handleCommand() {
-    issueCommand(commandType, JSON.parse(commandJson));
-  }
-  function resizeTextarea(event) {
-    event.target.style.height = "auto";
-    event.target.style.height = event.target.scrollHeight + "px";
+    issueCommand(value, JSON.parse(commandJson));
   }
   function issueCommand(cmdType, cmd) {
     eventBus.send(
@@ -70,116 +71,73 @@
         if (error) {
           notifier.danger("command error :" + error, 2000);
         }
+        aggregateClass = message.body.aggregateClass;
+        currentVersion = message.body.currentVersion;
+        delete message.body.aggregateClass;
+        delete message.body.currentVersion;
         aggregateState = JSON.stringify(message.body, null, 2);
       }
     );
   }
 </script>
 
-<div class="container">
-  <div class="section" id="aggregate-stream">
+<div class="margins">
+  <div class="margins">
     <h3 class="section-title">Aggregate State Stream</h3>
-    <div class="input-group">
-      <input
-        class="input-field"
+    <div class="margins">
+      <Textfield
         bind:value={aggregateId}
-        required
-        type="text"
-        placeholder="AggregateId"
-      />
-      <button class="btn" on:click={handleSubscription}>Subscribe</button>
+        label="AggregateId"
+        class="input-field"
+      >
+        <HelperText slot="helper"
+          >The aggregateId that has been defined in your aggregate class
+          definition</HelperText
+        >
+      </Textfield>
+      <Button
+        variant="unelevated"
+        color="primary"
+        raised
+        on:click={handleSubscription}
+        class="btn">Subscribe</Button
+      >
     </div>
-    <textarea
-      id="aggregateStateArea"
-      class="textarea-field"
-      bind:value={aggregateState}
-      required
-      placeholder="NONE"
-      on:input={resizeTextarea}
-    />
+    <Paper variant="outlined">
+      <Title>{aggregateClass}</Title>
+      <Subtitle>version : {currentVersion}</Subtitle>
+      <Content>{aggregateState}</Content>
+    </Paper>
   </div>
 
-  <div class="section" id="command-form">
-    <h3 class="section-title">Command Form</h3>
-    <div class="input-group">
-      <input
-        class="input-field"
-        bind:value={commandType}
-        required
-        type="text"
-        placeholder="Command Type"
-      />
-      <textarea
-        class="textarea-field"
+  <div class="margins">
+    <h3 class="section-title">Command Issuer</h3>
+    <div class="margins">
+      <div class="columns margins" style="justify-content: flex-start;">
+        <div>
+          <Select bind:value >
+            {#each cmdTypes as type}
+              <Option value={type}>{type}</Option>
+            {/each}
+          </Select>
+          <pre class="status">Selected: {value}</pre>
+        </div>
+      </div>
+      <Textfield
+        style="width: 100%; height: 400px;"
+        helperLine$style="width: 100%;"
         bind:value={commandJson}
+        textarea
         required
-        placeholder="Command JSON"
-        on:input={resizeTextarea}
-        style="overflow-y: hidden;"
+        label="Command Payload"
       />
-      <button class="btn" type="button" on:click={handleCommand}
-        >Issue Command</button
+      <Button
+        variant="unelevated"
+        color="primary"
+        raised
+        on:click={handleCommand}
+        class="btn">Issue Command</Button
       >
     </div>
   </div>
 </div>
-
-<style>
-  .textarea-field {
-    width: 100%; /* Use 100% width */
-    min-height: 100px; /* Set a minimum height */
-    resize: true; /* Disable manual resize */
-    font-size: 16px; /* Set font size */
-    padding: 10px; /* Set padding */
-    box-sizing: border-box; /* Include padding and border in element's total width and height */
-  }
-
-  .container {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    max-width: 1024px;
-    margin: 0 auto;
-    padding: 1rem;
-  }
-
-  .section {
-    background-color: #f5f5f5;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  .section-title {
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-    color: #0e3a61; /* Navy Blue */
-    font-weight: 600;
-  }
-
-  .input-group {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .input-field {
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    border: 2px solid #0e3a61; /* Navy Blue */
-    flex-grow: 1;
-  }
-
-  .btn {
-    background-color: #0e3a61; /* Navy Blue */
-    color: #ffffff;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .btn:hover {
-    background-color: #08233c; /* Dark Navy Blue */
-  }
-</style>

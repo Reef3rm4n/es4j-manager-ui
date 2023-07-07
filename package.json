@@ -13,6 +13,10 @@
     "@rollup/plugin-node-resolve": "^15.1.0",
     "@rollup/plugin-replace": "^5.0.2",
     "@rollup/plugin-terser": "^0.4.0",
+    "@smui/button": "^7.0.0-beta.14",
+    "@smui/card": "^7.0.0-beta.14",
+    "@smui/list": "^7.0.0-beta.14",
+    "@smui/textfield": "^7.0.0-beta.14",
     "rollup": "^3.15.0",
     "rollup-plugin-css-only": "^4.3.0",
     "rollup-plugin-livereload": "^2.0.0",
@@ -21,8 +25,10 @@
   },
   "dependencies": {
     "@beyonk/svelte-notifications": "^4.2.0",
+    "json-schema-faker": "^0.5.3",
     "sirv-cli": "^2.0.0",
     "sockjs-client": "^1.6.1",
+    "svelte-material-ui": "^7.0.0-beta.14",
     "svelte-notifications": "^0.9.98"
   }
 }
