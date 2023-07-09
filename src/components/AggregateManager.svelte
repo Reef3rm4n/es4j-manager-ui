@@ -9,6 +9,9 @@
   import Textfield from "@smui/textfield";
   import Paper, { Title, Subtitle, Content } from "@smui/paper";
   import Select, { Option } from "@smui/select";
+  import FormField from '@smui/form-field';
+  import Switch from '@smui/switch';
+  import Icon from '@smui/textfield/icon';
   let aggregateId = "";
   let aggregateState = "";
   let aggregateClass = "";
@@ -16,6 +19,18 @@
   let commandJson = "";
   let value = cmdTypes[0];
   let currentVersion = 0;
+  let simulate = false;
+  let scheduled = null;
+  let commandOptions = {
+    simulate: simulate,
+    scheduled: scheduled,
+  };
+  $: {
+    commandOptions = {
+      simulate: simulate,
+      scheduled: scheduled,
+    };
+  }
   $: {
     commandJson = cmdSchemas[value];
   }
@@ -61,6 +76,7 @@
     issueCommand(value, JSON.parse(commandJson));
   }
   function issueCommand(cmdType, cmd) {
+    cmd["options"] = commandOptions;
     eventBus.send(
       "/" + aggregate + "/" + cmdType,
       cmd,
@@ -113,7 +129,7 @@
     <div class="margins">
       <div class="columns margins" style="justify-content: flex-start;">
         <div>
-          <Select bind:value >
+          <Select bind:value>
             {#each cmdTypes as type}
               <Option value={type}>{type}</Option>
             {/each}
@@ -121,6 +137,20 @@
           <pre class="status">Selected: {value}</pre>
         </div>
       </div>
+      <FormField>
+        <Switch bind:checked={simulate} />
+        <span slot="label">
+          simulate command execution</span>
+      </FormField>
+      <Textfield
+      class="shaped-filled"
+      variant="filled"
+      bind:value={scheduled}
+      label="Scheduled Command"
+    >
+      <Icon class="material-icons" slot="leadingIcon">event</Icon>
+      <HelperText slot="helper">Helper Text</HelperText>
+    </Textfield>
       <Textfield
         style="width: 100%; height: 400px;"
         helperLine$style="width: 100%;"

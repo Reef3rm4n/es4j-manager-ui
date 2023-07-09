@@ -2,7 +2,6 @@
 
 <script>
   import TextField from "@smui/textfield";
-  import Button from "@smui/button";
   import DataTable, {
     Head,
     Body,
@@ -10,6 +9,9 @@
     Cell,
     Pagination,
   } from "@smui/data-table";
+  import Button from "@smui/button";
+
+  import { NotificationDisplay, notifier } from "@beyonk/svelte-notifications";
   import Select, { Option } from "@smui/select";
   import IconButton from "@smui/icon-button";
   import { Label } from "@smui/common";
@@ -29,6 +31,7 @@
   let batchSize = 1000;
   let rowsPerPage = 10;
   let currentPage = 0;
+  let offsetFrom = 0;
 
   $: start = currentPage * rowsPerPage;
   $: end = Math.min(start + rowsPerPage, rows.length);
@@ -38,45 +41,34 @@
   $: if (currentPage > lastPage) {
     currentPage = lastPage;
   }
-
-  function changePage() {
-    fetchEvents(aggregateIds, selected, dateFrom, dateTo, tags, batchSize);
-  }
-  function addRow(data) {
-    rows = [...rows, data];
-  }
-  // Function for handling page change
-  function fetchEvents(
-    aggregateIds,
-    selectedEvents,
-    eventDateFrom,
-    eventDateTo,
-    tags,
-    batchSize
-  ) {
+  function fetchEvents() {
     eventBus.send(
       "/" + aggregate + "/event",
       {
         aggregateIds: aggregateIds ? aggregateIds.split(",") : [],
-        events: selectedEvents,
-        from: eventDateFrom ? eventDateFrom : null,
-        to: eventDateTo ? eventDateTo : null,
+        events: selected,
+        from: dateFrom ? dateFrom : null,
+        to: dateTo ? dateTo : null,
         tags: tags ? tags.split(",") : [],
         tenantId: tenant,
         batchSize: batchSize,
+        offset: offsetFrom,
       },
       null,
       function (error, message) {
+        rows = [];
         if (error) {
-          notifier.danger("fetch error :" + error, 3000);
+          notifier.danger("fetch error :" + JSON.stringify(error), 3000);
         } else {
-          rows = [];
           message.body.forEach((event) => {
             addRow(event);
           });
         }
       }
     );
+  }
+  function addRow(data) {
+    rows = [...rows, data];
   }
 </script>
 
@@ -90,6 +82,7 @@
             helperText="Aggregate IDs (comma separated)"
             bind:value={aggregateIds}
             id="aggregateIds"
+    
           />
         </div>
       </LCell>
@@ -100,6 +93,7 @@
             helperText="Event Tags (comma separated)"
             bind:value={tags}
             id="tags"
+    
           />
         </div>
       </LCell>
@@ -110,6 +104,7 @@
             type="date"
             bind:value={dateFrom}
             id="event-date-from"
+    
           />
         </div>
       </LCell>
@@ -121,16 +116,29 @@
             type="date"
             bind:value={dateTo}
             id="event-date-to"
+    
           />
         </div>
       </LCell>
       <LCell>
         <div class="demo-cell">
           <TextField
-            label="Page Size:"
-            helperText="Default 100"
+            label="Batch Size:"
+            helperText="Default 1000"
             bind:value={batchSize}
             id="tags"
+    
+          />
+        </div>
+      </LCell>
+      <LCell>
+        <div class="demo-cell">
+          <TextField
+            label="Offset From:"
+            helperText="Default 0"
+            bind:value={offsetFrom}
+            id="tags"
+    
           />
         </div>
       </LCell>
@@ -140,19 +148,27 @@
             variant="unelevated"
             color="primary"
             raised
-            on:click={changePage}>Submit</Button
+            on:click={fetchEvents}>Submit</Button
           >
         </div>
       </LCell>
     </LayoutGrid>
     <div class="margins">
-      <Set chips={eventTypes} let:chip filter bind:selected>
+      <Set
+        chips={eventTypes}
+        let:chip
+        filter
+        bind:selected
+
+      >
         <Chip {chip} touch>
           <Text>{chip}</Text>
         </Chip>
       </Set>
-      <pre class="status">Selected: {selected.length === 0  ? "": selected.join(", ")}</pre>
-    </div> 
+      <pre class="status">Selected: {selected.length === 0
+          ? ""
+          : selected.join(", ")}</pre>
+    </div>
   </div>
   <div class="margins">
     <DataTable>

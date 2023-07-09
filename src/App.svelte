@@ -1,10 +1,9 @@
 <script>
 	import AggregateManager from "./components/AggregateManager.svelte";
-	// import ProjectionManager from "./components/ProjectionManager.svelte";
+	import ProjectionManager from "./components/ProjectionManager.svelte";
 	import EventExplorer from "./components/EventExplorer.svelte";
 	import EventBus from "./lib/vertx-eventbus.js";
 	import Textfield from "@smui/textfield";
-	import Icon from "@smui/textfield/icon";
 	import HelperText from "@smui/textfield/helper-text";
 	import {
 		NotificationDisplay,
@@ -170,12 +169,12 @@
 				/>
 			</Content>
 		</Paper>
-		<!-- {:else if active === "Projection Manager"}
+		{:else if active === "Projection Manager"}
 		<Paper variant="unelevated">
 			<Content>
 				<ProjectionManager bind:eventBus bind:aggregate bind:tenant />
 			</Content>
-		</Paper> -->
+		</Paper>
 	{/if}
 </div>
 
